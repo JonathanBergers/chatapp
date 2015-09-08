@@ -1,6 +1,8 @@
 package server;
 
 
+import model.Message;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -13,7 +15,7 @@ import java.util.List;
 public class Server {
 
     private static final int PORT = 2000;
-    private static final String host = "localhost";
+    private static final String HOST = "localhost";
     private  List<HandleMessageThread> clientThreads = new ArrayList<HandleMessageThread>();
 
 
@@ -41,8 +43,12 @@ public class Server {
                 while(true) {
                     Socket socket = serverSocket.accept();
 
+                    System.out.println("Client socket accepted");
+
                     HandleMessageThread handleMessageThread = new HandleMessageThread(socket, this);
                     handleMessageThread.start();
+
+
                     clientThreads.add(handleMessageThread);
 
 
@@ -67,12 +73,26 @@ public class Server {
 
 
 
-    public void broadcastMessage(String message){
+    public void broadcastMessage(final Message message){
 
 
         for(HandleMessageThread h: clientThreads){
 
                 h.sendMessage(message);
+
+        }
+    }
+
+    public void broadcastMessage(final Message message, final String recipent){
+
+
+        for(HandleMessageThread h: clientThreads){
+
+            if(h.fromUser(recipent)){
+                h.sendMessage(message);
+
+            }
+
 
         }
     }

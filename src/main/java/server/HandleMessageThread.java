@@ -1,9 +1,9 @@
 package server;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
+import model.Message;
+import model.User;
+
+import java.io.*;
 import java.net.Socket;
 
 /**
@@ -15,23 +15,16 @@ public class HandleMessageThread extends Thread {
     private  Socket clientsocket;
     private  Server server;
 
-    private BufferedInputStream inputStream;
-    private BufferedOutputStream outputStream;
+    private ObjectInputStream inputStream;
+    private ObjectOutputStream outputStream;
 
 
+    private User sender;
 
     public HandleMessageThread(Socket clientsocket, Server server) {
         this.clientsocket = clientsocket;
         this.server = server;
 
-        try {
-            inputStream = new BufferedInputStream(clientsocket.getInputStream());
-            outputStream = new BufferedOutputStream(clientsocket.getOutputStream());
-        } catch (IOException e) {
-
-            System.out.println("handle messge thread error declaring input or output stream");
-            e.printStackTrace();
-        }
     }
 
     @Override
@@ -39,19 +32,74 @@ public class HandleMessageThread extends Thread {
 
         System.out.println("message handle thread initialized");
 
-        server.broadcastMessage("message from message handler thread server");
 
-        // leest van de socket en print het
-        byte[] buffer = new byte[1024];
-        int read;
+
+
+
         try {
-            while((read = clientsocket.getInputStream().read(buffer)) != -1) {
-                String output = new String(buffer, 0, read);
-                server.broadcastMessage(output);
-            }
+            inputStream = new ObjectInputStream(clientsocket.getInputStream());
+
+            System.out.println("HandleMessageThread: inputstream initialized");
         } catch (IOException e) {
+            System.out.println("handle messge thread error: cant initialize object inputstream");
             e.printStackTrace();
         }
+
+
+        try {
+            outputStream = new ObjectOutputStream(clientsocket.getOutputStream());
+        } catch (IOException e) {
+            System.out.println("handle messge thread error: cant initialize object outputstream");
+            e.printStackTrace();
+        }
+
+
+
+
+
+        while(true){
+
+            try {
+                Message m = (Message) inputStream.readObject();
+
+                System.out.println("message recieved" + m);
+
+                // eerste bericht
+                if(sender == null){
+
+                    assert m.getRecipent() == null: "init message cant be to a user";
+                    assert m.getSender() != null: "bericht heeft geen zender ?";
+
+                    // initialize sender, so messages can be send to him
+                    sender = m.getSender();
+
+                }
+
+                // bericht heeft een bestemming
+                if(m.getRecipent() != null){
+
+                    server.broadcastMessage(m, m.getRecipent());
+
+                }else {
+                    // stuur naar iedereen
+                    server.broadcastMessage(m);
+
+                }
+
+
+
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                System.out.println("Handlemessagethread: Could not make message object of the inputstream");
+                e.printStackTrace();
+            }
+
+        }
+
+
 
 
         // wacht op berichten van user
@@ -65,22 +113,35 @@ public class HandleMessageThread extends Thread {
     }
 
 
-    public void sendMessage(String message){
+    public void sendMessage(Message message){
 
 
         System.out.println("Message handled, and sent");
 
-        PrintWriter printWriter = null;
         try {
-            printWriter = new PrintWriter(clientsocket.getOutputStream());
-            printWriter.write(message);
-            printWriter.flush();
-
+            outputStream.writeObject(message);
         } catch (IOException e) {
+
+            System.out.println("Handlemessagethread error: Cant write message object to outputstream");
             e.printStackTrace();
         }
 
 
+
+    }
+
+    /**checks if this thread handles message from the given user
+     *
+     * @param
+     * @return
+     */
+    public boolean fromUser(final String username){
+
+
+        assert sender != null: "geen init message ??";
+
+
+        return sender.isUser(username);
 
     }
 }

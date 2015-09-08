@@ -1,5 +1,8 @@
 package client;
 
+import model.Message;
+import model.User;
+
 import java.io.*;
 import java.net.Socket;
 
@@ -9,16 +12,21 @@ import java.net.Socket;
  */
 public class ClientRecieveThread extends Thread{
 
-    private Socket socket;
-    private BufferedInputStream inputStream;
+    private final Socket socket;
+    private final User user;
 
-    public ClientRecieveThread(Socket socket) {
+    private ObjectInputStream inputStream;
+
+
+    /**initializes the inputstream
+     *
+     * @param socket
+     * @param user
+     */
+    public ClientRecieveThread(final Socket socket, final User user) {
+        this.user = user;
         this.socket = socket;
-        try {
-            inputStream = new BufferedInputStream(socket.getInputStream());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
     }
 
 
@@ -26,31 +34,41 @@ public class ClientRecieveThread extends Thread{
     public void run() {
 
 
-
-
-
-
-        System.out.println("recieve thread initialized");
-        // leest van de socket en print het
-        byte[] buffer = new byte[1024];
-        int read;
         try {
-            while((read = socket.getInputStream().read(buffer)) != -1) {
-                String output = new String(buffer, 0, read);
-                System.out.println(output);
-            }
+            inputStream = new ObjectInputStream(socket.getInputStream());
         } catch (IOException e) {
             e.printStackTrace();
         }
 
 
-//
-//        String userInput;
-//        while ((userInput = stdIn.readLine()) != null) {
-//            out.println(userInput);
-//            System.out.println("echo: " + in.readLine());
-//        }
 
+        System.out.println("recieve thread initialized");
+
+
+        while(true){
+
+            try {
+                Message m = (Message) inputStream.readObject();
+
+                // kijk of bericht van gebruiker komt
+                if(m.getRecipent() != null){
+
+                    System.out.println("Prive bericht van "+ m.getRecipent() + " : "+ m);
+                }else{
+                    System.out.println(m);
+                }
+
+
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                System.out.println("Could not make message object of the inputstream");
+                e.printStackTrace();
+            }
+
+        }
 
     }
 }
