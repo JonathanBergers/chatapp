@@ -22,6 +22,9 @@ public class ClientSendThread extends Thread {
         this.socket = socket;
         try {
             printWriter = new PrintWriter(socket.getOutputStream());
+
+
+
         } catch (IOException e) {
             System.out.println("Client send thread error: cant initialize printwriter");
             e.printStackTrace();
